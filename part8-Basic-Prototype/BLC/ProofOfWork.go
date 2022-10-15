@@ -57,3 +57,13 @@ func (p *ProofOfWork) Run() ([]byte, int64) {
 	}
 	return hash[:], int64(nonce)
 }
+
+// IsValid
+func (p *ProofOfWork) IsValid() bool {
+	var hashInt big.Int
+	hashInt.SetBytes(p.Block.Hash)
+	if p.Target.Cmp(&hashInt) == 1 {
+		return true
+	}
+	return false
+}
