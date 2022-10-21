@@ -1,6 +1,7 @@
 package BLC
 
 import (
+	"encoding/hex"
 	"fmt"
 	"log"
 	"math/big"
@@ -120,14 +121,14 @@ func (b *BlockChain) PrintChain() {
 			fmt.Printf("%x\n", tx.TxHash)
 			fmt.Println("Vins:")
 			for _, in := range tx.Vins {
-				fmt.Printf("%x\n", in.TxID)
+				fmt.Printf("%x\n", in.TxHash)
 				fmt.Printf("%d\n", in.Vout)
 				fmt.Printf("%s\n", in.ScriptSig)
 			}
 			fmt.Println("Vouts:")
 			for _, out := range tx.Vouts {
 				fmt.Printf("%d\n", out.Value)
-				fmt.Printf("%s\n", out.ScriptPublic)
+				fmt.Printf("%s\n", out.ScriptPubKey)
 			}
 		}
 
@@ -162,6 +163,67 @@ func BlockchainObject() *BlockChain {
 	}
 
 	return &BlockChain{tip, db}
+}
+
+// UnSpentTransactionWithAddress
+func (b *BlockChain) UnSpentTransactionWithAddress(address string) []*TXOutPut {
+
+	var unUTXOS []*TXOutPut
+	spentTXOutputs := make(map[string][]int)
+
+	blockIterator := b.Iterator()
+	for {
+		block := blockIterator.Next()
+		fmt.Println(block)
+		fmt.Println()
+
+		// Vins
+		for _, tx := range block.Txs {
+			if tx.IsCoinbaseTransaction() == false {
+				for _, in := range tx.Vins {
+					if in.UnLockWithAddress(address) {
+						key := hex.EncodeToString(in.TxHash)
+						spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
+					}
+				}
+			}
+
+			// Vouts
+			for index, out := range tx.Vouts {
+				if out.UnLockScriptPubKeyWithAddress(address) {
+					fmt.Println(out)
+					if spentTXOutputs != nil {
+						for txHash, indexArray := range spentTXOutputs {
+
+							//if txHash == hex.EncodeToString(tx.TxHash) {
+
+							for _, i := range indexArray {
+								if index == i && txHash == hex.EncodeToString(tx.TxHash) {
+									continue
+								} else {
+									unUTXOS = append(unUTXOS, out)
+								}
+							}
+
+							//}
+
+						}
+					} else {
+						unUTXOS = append(unUTXOS, out)
+					}
+				}
+			}
+		}
+
+		fmt.Println(spentTXOutputs)
+		var hashInt big.Int
+		hashInt.SetBytes(block.PrevBlockHash)
+		if hashInt.Cmp(big.NewInt(0)) == 0 {
+			break
+		}
+	}
+
+	return unUTXOS
 }
 
 // MineNewBlock

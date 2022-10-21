@@ -164,6 +164,11 @@ func BlockchainObject() *BlockChain {
 	return &BlockChain{tip, db}
 }
 
+func UnSpentTransactionWithAddress(address string) []*Transaction {
+
+	return nil
+}
+
 // MineNewBlock
 func (b *BlockChain) MineNewBlock(from, to, amount []string) {
 	//fmt.Println(from)

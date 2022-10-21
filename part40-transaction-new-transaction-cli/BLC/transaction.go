@@ -15,17 +15,22 @@ type Transaction struct {
 	Vouts  []*TXOutPut
 }
 
+// IsCoinbaseTransaction
+func (tx *Transaction) IsCoinbaseTransaction() bool {
+	return len(tx.Vins[0].TxHash) == 0 && tx.Vins[0].Vout == -1
+}
+
 // NewCoinBaseTransaction
 func NewCoinBaseTransaction(address string) *Transaction {
 	txInput := &TXInput{
-		TxID:      []byte{},
+		TxHash:    []byte{},
 		Vout:      -1,
 		ScriptSig: "Genesis Data",
 	}
 
 	txOutput := &TXOutPut{
 		Value:        10,
-		ScriptPublic: address,
+		ScriptPubKey: address,
 	}
 
 	txCoinbase := &Transaction{
@@ -51,12 +56,14 @@ func (tx *Transaction) HashTransaction() {
 
 // NewSimpleTransaction
 func NewSimpleTransaction(from, to string, amount int) *Transaction {
+	//unSpentTx := UnSpentTransactionWithAddress(from)
+	//fmt.Printf("unSpentTx： %v", unSpentTx)
 
 	var txIntputs []*TXInput
 	var txOutputs []*TXOutPut
 
 	// 代表消费
-	bytes, _ := hex.DecodeString("8bfd87a6641157daeff2b54375e05498731896c3c9c962e5efcd5f6484caf4cd")
+	bytes, _ := hex.DecodeString("581ce6dfd4f260eb6d0ed4d58fdce62e94f137edcd1bf651ecf78ebcadb5ba9c")
 	txInput := &TXInput{bytes, 0, from}
 
 	// 消费
@@ -67,10 +74,11 @@ func NewSimpleTransaction(from, to string, amount int) *Transaction {
 	txOutputs = append(txOutputs, txOutput)
 
 	// 找零
-	txOutput = &TXOutPut{10 - 4, from}
+	txOutput = &TXOutPut{4 - int64(amount), from}
 	txOutputs = append(txOutputs, txOutput)
 
 	tx := &Transaction{[]byte{}, txIntputs, txOutputs}
 	tx.HashTransaction()
+
 	return tx
 }
