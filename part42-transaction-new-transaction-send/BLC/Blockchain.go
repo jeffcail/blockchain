@@ -166,10 +166,54 @@ func BlockchainObject() *BlockChain {
 }
 
 // UnUTXOs
-func (b *BlockChain) UnUTXOs(address string) []*UTXO {
-
+func (b *BlockChain) UnUTXOs(address string, txs []*Transaction) []*UTXO {
 	var unUTXOS []*UTXO
 	spentTXOutputs := make(map[string][]int)
+
+	for _, tx := range txs {
+		if tx.IsCoinbaseTransaction() == false {
+			for _, in := range tx.Vins {
+				if in.UnLockWithAddress(address) {
+					key := hex.EncodeToString(in.TxHash)
+					spentTXOutputs[key] = append(spentTXOutputs[key], in.Vout)
+				}
+			}
+		}
+	}
+
+	for _, tx := range txs {
+	work1:
+		for index, out := range tx.Vouts {
+			if out.UnLockScriptPubKeyWithAddress(address) {
+				if len(spentTXOutputs) == 0 {
+					utxo := &UTXO{tx.TxHash, index, out}
+					unUTXOS = append(unUTXOS, utxo)
+				} else {
+					for hash, indexArray := range spentTXOutputs {
+						txHashStr := hex.EncodeToString(tx.TxHash)
+						if hash == txHashStr {
+
+							var isUnSpentUTXO bool
+							for _, outIndex := range indexArray {
+								if index == outIndex {
+									isUnSpentUTXO = true
+									continue work1
+								}
+								if isUnSpentUTXO == false {
+									utxo := &UTXO{tx.TxHash, index, out}
+									unUTXOS = append(unUTXOS, utxo)
+								}
+							}
+						} else {
+							utxo := &UTXO{tx.TxHash, index, out}
+							unUTXOS = append(unUTXOS, utxo)
+						}
+					}
+				}
+
+			}
+		}
+	}
 
 	blockIterator := b.Iterator()
 	for {
@@ -178,7 +222,8 @@ func (b *BlockChain) UnUTXOs(address string) []*UTXO {
 		fmt.Println()
 
 		// Vins
-		for _, tx := range block.Txs {
+		for i := len(block.Txs) - 1; i >= 0; i-- {
+			tx := block.Txs[i]
 			if tx.IsCoinbaseTransaction() == false {
 				for _, in := range tx.Vins {
 					if in.UnLockWithAddress(address) {
@@ -229,9 +274,8 @@ func (b *BlockChain) UnUTXOs(address string) []*UTXO {
 }
 
 // FindSpendableUTXOS
-func (b *BlockChain) FindSpendableUTXOS(from string, amount int) (int64, map[string][]int) {
-	utxos := b.UnUTXOs(from)
-
+func (b *BlockChain) FindSpendableUTXOS(from string, amount int, txs []*Transaction) (int64, map[string][]int) {
+	utxos := b.UnUTXOs(from, txs)
 	spendAbleUTXO := make(map[string][]int)
 
 	var value int64
@@ -254,15 +298,12 @@ func (b *BlockChain) FindSpendableUTXOS(from string, amount int) (int64, map[str
 
 // MineNewBlock
 func (b *BlockChain) MineNewBlock(from, to, amount []string) {
-	//fmt.Println(from)
-	//fmt.Println(to)
-	//fmt.Println(amount)
-
-	a, _ := strconv.Atoi(amount[0])
-	tx := NewSimpleTransaction(from[0], to[0], a, b)
 	var txs []*Transaction
-
-	txs = append(txs, tx)
+	for index, address := range from {
+		a, _ := strconv.Atoi(amount[index])
+		tx := NewSimpleTransaction(address, to[index], a, b, txs)
+		txs = append(txs, tx)
+	}
 
 	var block *Block
 	b.DB.View(func(tx *bolt.Tx) error {
@@ -292,7 +333,7 @@ func (b *BlockChain) MineNewBlock(from, to, amount []string) {
 
 // GetBalance
 func (b *BlockChain) GetBalance(address string) int64 {
-	utxos := b.UnUTXOs(address)
+	utxos := b.UnUTXOs(address, []*Transaction{})
 
 	var amount int64
 
