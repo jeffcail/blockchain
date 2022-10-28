@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 
-	"github.com/c/public-chain.io/part47-wallet/BLC"
+	"github.com/c/public-chain.io/part49-wallet/BLC"
 )
 
 func main() {
 	wallet := BLC.NewWallet()
-	fmt.Printf("%s\n", wallet.GetAddress())
+	address := wallet.GetAddress()
+	fmt.Printf("%s\n", address)
+
+	validateAddress := BLC.ValidateAddress(address)
+	fmt.Printf("%v\n", validateAddress)
 }
