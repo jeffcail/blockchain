@@ -13,6 +13,7 @@ type CLI struct{}
 
 func printUsage() {
 	fmt.Println("Usage:")
+	fmt.Println("\taddresslists -- 输出所有钱包地址")
 	fmt.Println("\tcreatewallet -- 创建钱包")
 	fmt.Println("\tcreateblockchain -address -- 交易数据")
 	fmt.Println("\tsend -from FROM -to TO -amount AMOUNT - 交易明细")
@@ -30,6 +31,7 @@ func isValidFlags() {
 func (cli *CLI) Run() {
 	isValidFlags()
 
+	addressListsCmd := flag.NewFlagSet("addresslists", flag.ExitOnError)
 	createwalletCmd := flag.NewFlagSet("createwallet", flag.ExitOnError)
 	sendBlockCmd := flag.NewFlagSet("addblock", flag.ExitOnError)
 	printChainCmd := flag.NewFlagSet("printchain", flag.ExitOnError)
@@ -46,6 +48,12 @@ func (cli *CLI) Run() {
 	switch os.Args[1] {
 	case "send":
 		err := sendBlockCmd.Parse(os.Args[2:])
+		if err != nil {
+			log.Panic(err)
+		}
+
+	case "addresslists":
+		err := addressListsCmd.Parse(os.Args[2:])
 		if err != nil {
 			log.Panic(err)
 		}
@@ -101,6 +109,10 @@ func (cli *CLI) Run() {
 	if printChainCmd.Parsed() {
 		//fmt.Println("输出所以区块的数据")
 		cli.printChain()
+	}
+
+	if addressListsCmd.Parsed() {
+		cli.GetAddressLists()
 	}
 
 	if createwalletCmd.Parsed() {
